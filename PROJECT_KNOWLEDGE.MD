@@ -87,7 +87,7 @@ Skill categories (not all written yet):
 - **Session-boundary skills** — `session-start-load`, `session-end-audit`
 - **Operational/safety skills** — `spoiler-safe-report`, `player-action-route`
 
-**Currently written:** `introduce-element`, `narrate-scene`, `voice-npc`, `player-action-route`, `call-for-roll`, `resolve-roll`.
+**Currently written:** `introduce-element`, `narrate-scene`, `voice-npc`, `player-action-route`, `call-for-roll`, `resolve-roll`, `run-combat-round`, `handle-off-script`, `update-position`.
 
 ## Known hard problem (scope flag)
 
