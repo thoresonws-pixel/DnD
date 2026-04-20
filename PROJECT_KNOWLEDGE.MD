@@ -4,13 +4,14 @@ Last Updated: 2026-04-19
 
 ## Product goal
 
-A fully immersive, in-person D&D experience where **Claude is the DM** and Scott plays as a player (must not know the story). The system runs pre-existing published adventures loaded on demand.
+A fully immersive, in-person D&D experience where **Claude is the DM** and Scott plays as a player (must not know the story, by default). The system runs pre-existing published adventures loaded on demand. Scott's group is new to D&D — the AI DM is also a teacher.
 
 ## Physical setup
 
 - **Game board** = flat-screen TV laid horizontally, running Foundry VTT as the map. 3D-printed minis placed physically on top of the screen.
 - **DM screen** = separate TV acting as Claude's "face" — shows NPC portraits, character cards, scene art, plays DM/NPC voices.
-- **Player devices** = each player has a phone webapp. Single "Action" button → hold-to-talk → action routed to Claude API. Players also input dice results manually when Claude calls for rolls.
+- **Player devices** = each player has a phone webapp. Core UI: Action button (hold to talk), arrow buttons (for the current marching-order leader in tactical exploration), dice result entry, character sheet view. No phone mini-map — the table TV is the shared map.
+- **Scott's laptop** = Foundry GM view for updating PC positions; also the future site of the curator pane if/when that role lands.
 
 ## Stack
 
@@ -18,79 +19,146 @@ A fully immersive, in-person D&D experience where **Claude is the DM** and Scott
 - **Firebase Realtime DB** as sync substrate between player phones and the DM brain
 - **Claude API** is the DM brain
 - **ElevenLabs** for NPC/DM voice synthesis
-- **Foundry VTT** as the tabletop map; integration likely via a Foundry module or websocket bridge
+- **Foundry VTT** as the tabletop map; Claude writes to Foundry directly (enemy spawns, token moves, conditions) via a module or websocket API
 
-## Claude's role (fully immersive AI DM)
+## Campaign scale and structure
 
-Runs the entire campaign: narration, NPC voicing, rules calls, initiative, encounter flow. Calls for rolls; players physically roll and type results. Takes positional ground-truth from Foundry state + occasional human helper input. No camera / no computer vision.
+- Total sessions over ~2 years: **10–15** (realistic group cadence)
+- Shape: 1–2 short intro campaigns (~3 sessions total, level 1–4) → 1 medium campaign (~4 sessions, level 4–15) → 1 final epic campaign (6–8 sessions, level 15–20).
+- **Final epic module picked UPFRONT** — locks the end-boss framework so early campaigns can opportunistically foreshadow.
+- Other modules picked just-in-time, by description not title, to preserve Scott's player-blind experience.
+- Same world across all campaigns. Characters and items persist. Loose continuity; episodes don't need to interlock.
 
-## Decision log
+## Architectural principles
 
-- **2026-04-19:** Overhead camera SCRATCHED — no camera-based miniature position detection.
-- **2026-04-19:** Assistant-DM framing INVERTED — Claude is the DM; Scott is a player who occasionally feeds the AI DM helper input (load this module, a mini got bumped to X).
-- **2026-04-19:** Skills-based architecture adopted — DM behaviors live as discrete invokable skills in `skills/`, not as one giant system prompt.
+### Claude proposes, the app disposes
 
-## Spoiler-avoidance design constraint
+Claude is the narrative intelligence on top of a state machine with strict invariants. Claude never writes directly to mechanical state. The app owns all character/combat data behind typed accessors; Claude reads via query tools and proposes changes via mutation tools; the app validates and applies.
 
-Scott must **not see story content**. Practical compromises:
-- Scott curates a *pool* of ~10 NPC voices + portraits upfront. Claude matches invented/encountered NPCs from the pool.
-- Scott self-polices repo file browsing. Claude must never *push* story content at him — progress reports use aggregates and coded IDs only, never names.
-- No clarifying questions about plot to Scott. Structural/technical questions only.
+**App-owned:** class, level, ability scores, HP current/max, XP (level-up triggered by threshold crossing only), spell slots, hit dice, inventory, equipment, conditions, death saves, combat HP tracking, and a derived **combat power** metric (offensive/defensive/control/healing ratings, current resource state, composition type, composite score) used for encounter calibration.
 
-## Campaign ingestion — seed bank, not script
+**Claude-owned:** plot, beats, secrets, NPC personalities, locations, factions, session logs, rolling summaries, character narrative arc (relationships/goals, NOT sheet data).
 
-The downloaded module is **creative fuel**, not a script to execute. The final story played can bear little resemblance to the source module. The module's job is to fix what Claude is bad at (novel premises, memorable villains with texture, distinctive world-building, tone commitment, avoiding AI-generic slop).
+**Tools (not setters):** `getCharacter`, `getParty`, `getInventory`, `getCombatPower`, `getPartyCombatPower`, `applyDamage`, `applyHealing`, `awardXP` (only path to level-ups), `useSpellSlot`, `addCondition`, `equipItem`, etc. No `setLevel`, `setHP`, `setXP`.
 
-**Pipeline:**
-- Fully automated, no Scott-in-the-loop review.
-- Multi-pass with specific extraction lenses (tone, villain texture, places, factions, set-pieces, hooks, self-critique, gap-fill). 5–8 well-designed passes, not 20 identical re-reads.
-- Checkpointed; passes re-runnable individually.
-- Progress reports use aggregates and coded IDs only.
+### Build-time vs. runtime separation
 
-## Memory schema — source (immutable) + live (emergent)
+At the table, latency breaks immersion. Expensive work (web search, multi-pass reasoning, image generation, PDF ingestion) runs offline into local files. Runtime reads files and does selection + fill-in within ~1–3 seconds per turn.
 
-**`source/` — extracted once from the module, immutable seed bank:**
-- `tone.md` — genre, mood, cadence
-- `villains/` — antagonist archetypes with texture (NOT a planned arc)
-- `places/` — distinctive locations with sensory/mood detail
-- `factions/` — tensions and alignments
-- `setpieces/` — memorable scenes/images/mechanics
-- `hooks/` — premise seeds
-- `seed_usage.json` — tracks which seeds have been drawn on
+**Build-time artifacts (two tiers):**
 
-**`live/` — emergent, mutable, the actual story being told:**
-- `plot.md`, `beats.md`, `npcs/`, `locations/`, `secrets.md`, `session_log/`
+- **Shared library** (once, carries across campaigns):
+  - `library/puzzles/` — ~10 curated puzzles with rich tags (math: 10–15 sessions × 1 non-combat per 2 hrs × ~40% puzzles ≈ 6–10 used; a library of 10 is right-sized with reskinning)
+  - `library/scene_templates/` — tavern arrival, camp, dungeon entrance skeletons
+  - `library/prop_templates/` — reusable frames (letter textures, map frames, seal designs)
+  - `library/voices/` — ~10 ElevenLabs voice samples with metadata
+  - `library/images/` — reusable art frames
+  - `library/monsters/`, `library/spells/`, `library/items/` — SRD data
+- **Per-campaign bank** (fresh per campaign):
+  - `campaigns/<slug>/source/villains/`, `places/`, `factions/`, `hooks/`, `setpieces/`
 
-**Runtime rule:** Claude runs from `live/`. When improvising, it MUST consult `source/` first and draw on unused seeds before inventing. Otherwise the module ingestion was wasted effort.
+**Runtime:** local file reads + Claude API only. No web-fetch, no multi-pass self-critique, no new image generation.
 
-## Promise-keeping rule (Chekhov discipline)
+**Prep workflow:** incremental preferred over front-load. Minimum-viable library to start campaign 1, expand as we learn what's missing.
 
-Players won't notice missing content. They *will* notice a character introduced as "the prince" who never matters again. Every introduced element gets an emphasis tier:
+### Memory schema — source (immutable) + live (emergent)
 
-- `keystone` — structurally necessary; forward-link required
-- `recurring` — returns 2+ times; forward-link required
+The downloaded module is **creative fuel**, not a script. Claude extracts seeds at ingestion; runtime runs from `live/` and draws unused seeds from `source/` when improvising.
+
+**`source/` — extracted once per campaign:**
+`tone.md`, `villains/`, `places/`, `factions/`, `setpieces/`, `hooks/`, `seed_usage.json`
+
+**`live/` — emergent, mutable:**
+`plot.md`, `beats.md`, `npcs/`, `locations/`, `secrets.md`, `session_log/`, `party_state.json` (marching order, sub-groups), `pending_rolls/`, `combat/`, `props/`, `revealed_knowledge/`
+
+**Runtime rule:** when improvising new named content (villain, place, NPC), Claude MUST consult `source/` first and draw unused seeds before inventing. Invention is the rare case, not the default.
+
+### Promise-keeping rule (Chekhov discipline)
+
+Players won't notice missing content; they will notice "Prince Aldric" being introduced and never mattering again. Every introduced element has an `emphasis` tier:
+
+- `keystone` — structurally necessary; forward-link required; named, portraited, voiced
+- `recurring` — returns 2+ times; forward-link required; named, small portrait
 - `flavor` — single-scene ambient; no name, no portrait, no spotlight
 
-Rules enforced by the `introduce-element` skill:
-1. Pick tier before introducing.
-2. Keystone/recurring require a declared forward-link (beat, faction, secret, other element) — else downgrade to flavor.
-3. Schedule a payoff hook for keystone/recurring at introduction time.
-4. Post-session audit scans for unkept promises and either plants a hook or silently downgrades.
+Enforced by `introduce-element`: pick tier → declare forward-link (else downgrade to flavor) → consult seed bank → schedule payoff hook for keystone/recurring. Post-session audit scans for unkept promises and plants hooks or silently downgrades.
 
-## Skills architecture
+### Skills architecture
 
-DM behaviors live as markdown skill specs in `skills/`. Each skill has: trigger conditions, inputs, a checklist (the contract), outputs, and failure modes it prevents.
+DM behaviors live as markdown skill specs in `skills/`. Each has: trigger, inputs, checklist (the contract), outputs, failure modes. Two tiers (to be reflected in frontmatter):
+- `tier: runtime` — runs during play via Claude API
+- `tier: build_time` — runs during prep (Claude Code / batch jobs)
 
-Skill categories (not all written yet):
-- **Ingestion skills** — `module-*-extract`, `seed-bank-audit` (one-time per campaign, can run inside Claude Code as Anthropic Skills)
-- **Session-runtime skills** — `narrate-scene`, `introduce-element`, `voice-npc`, `call-for-roll`, `resolve-roll`, `run-combat-round`, `handle-off-script`, `update-position` (run via Claude API from Next.js server during sessions)
-- **Session-boundary skills** — `session-start-load`, `session-end-audit`
-- **Operational/safety skills** — `spoiler-safe-report`, `player-action-route`
+**Written (all runtime tier):** `introduce-element`, `narrate-scene`, `voice-npc`, `player-action-route`, `call-for-roll`, `resolve-roll`, `run-combat-round`, `handle-off-script`, `update-position`, `session-start-load`, `session-end-audit`, `spoiler-safe-report`.
 
-**Currently written:** `introduce-element`, `narrate-scene`, `voice-npc`, `player-action-route`, `call-for-roll`, `resolve-roll`, `run-combat-round`, `handle-off-script`, `update-position`, `session-start-load`, `session-end-audit`, `spoiler-safe-report`.
+**Planned runtime skills:** `compose-encounter`, `run-puzzle`, `run-skill-challenge`, `run-social-encounter`, `generate-prop`, `resolve-movement`, `handle-split`, `handle-merge`.
 
-**Still to write:** ingestion skills (`module-*-extract`, `seed-bank-audit`).
+**Planned build-time skills:** ingestion pipeline (`module-*-extract` by lens: tone, villains, places, factions, setpieces, hooks), `seed-bank-audit`, `puzzle-library-ingest`, `voice-pool-prebuild`.
 
-## Known hard problem (scope flag)
+**Known TODO:** clarifying pass on `resolve-roll` and `run-combat-round` — current specs mention "apply damage / update HP" as if Claude writes directly. Must be refactored to route all mechanical mutations through app tools per Claude-proposes-app-disposes.
 
-v1 should prove the session-loop on a small hand-structured encounter before attempting full-module ingestion. Ingestion is the ambitious part; the runtime loop is the uncertain part. Validate the loop first.
+## Teaching ramp
+
+Scott's group is new to D&D. Per-campaign flag `teaching_mode: heavy | moderate | light | off` controls difficulty calibration (target encounter-power ratio), narration mechanical hints, rules-query tone, level-up guidance, NPC tactics aggression. Default schedule: intros `heavy`, medium `moderate`, final epic `off`.
+
+## Encounter variety
+
+D&D is most fun when non-combat encounters are first-class: puzzles, skill challenges, social/negotiation, stealth/infiltration, investigation. Target ~1 combat + ~1 non-combat per 2 hours of play. Future `compose-encounter` skill picks type and calibration.
+
+### Puzzle sourcing (hard rule)
+
+Never generate puzzles from scratch. Always pull from pre-existing sources: current module's puzzle library, curated corpora (published puzzle packs, community lists), project's `source/puzzles/` library. Claude's job is selection + calibration + reskinning surface details — **never changing logic**. Required sanity check: Claude must self-solve from the presentation it plans to give players (failure or instant-solve = broken presentation).
+
+## Props (hybrid physical/digital)
+
+Scott pre-builds a library of GENERIC physical props (tied scrolls, sealed envelopes, 3D keys, tokens) with opaque IDs. Catalog in `props/physical_catalog.json` lists physical attributes only (no plot content). At session time Claude binds narrative content to a physical_id in `live/props/`; helper channel tells Scott "hand them CLUE 14D"; physical prop crosses the table; on "prop opened," DM TV renders the real content.
+
+**Hard guardrail:** physical props must be genuinely generic. Any plot-specific visual (royal sigil, cult symbol) renders on the DM TV, not on the object. Physical is tactile carrier only. Same philosophy applies to enemy minis — generic humanoid / beast / large-beast / dragon-sized minis represent any creature in that size category.
+
+## NPC schema with knowledge tiers
+
+To prevent LLM drift (premature reveals, under-reveals, voice drift), NPC files include structured knowledge tiers: `open` (freely shared), `guarded` (shared under pressure/rapport with a `reveal_trigger`), `secret` (hidden with strict `reveal_trigger`). A pre-speak QC gate in `voice-npc` / `narrate-scene` checks planned lines against these tiers and rewrites to open-knowledge if a trigger isn't met. This is Layer 1 structural QC — catches the murder-mystery-reveal problem without human judgment.
+
+Full schema in `memory/project_npc_schema_knowledge_tiers.md`.
+
+## Foundry bridge (asymmetric)
+
+- **Foundry → Claude:** Claude reads all state (token positions, visibility, fog reveals, conditions).
+- **Claude → Foundry:** Claude writes directly — enemy spawns, token moves, status overlays. Tokens appear instantly on the table TV, no latency through Scott.
+- **Scott → Foundry:** clicks grid cells to update PC positions when minis physically move.
+- **Spoiler-surface risk:** Scott running Foundry GM view exposes monster stats, hidden notes, fog reveals. Fix options (undecided): lock down Foundry permissions ("Trusted Player" with PC-drag-only) OR build a custom helper UI on top of Foundry. Default: permissions first.
+
+## Movement
+
+### Modes (per scene)
+- **Abstracted** — overland travel; no grid; Claude narrates. Marching order still matters for ambush surprise checks.
+- **Tactical** — grid-based interiors; fog of war enabled; arrow movement enabled.
+
+### Arrow-key exploration (primary for tactical spaces)
+Leader phone shows ↑ ↓ ← →. One tap = one grid square (5 ft) in absolute direction. Whole sub-group follows in marching order — each token shifts one cell maintaining relative formation. Dungeon-crawler feel. Zero cognitive load.
+
+### Marching order
+Party state is a list of **sub-groups**, each with ordered marching order and a leader (front = arrow controller). Declared via drag-sort UI on phones. Front character is first to trigger surprise checks on hostile fog reveals — the "bard leading" party learns fast.
+
+### Split-party (first-class)
+Player voices "I'm heading X with [PC]" via Action button → `handle-split` creates a new sub-group with declared members, new leader gets arrows. Merge via spatial overlap or "we regroup" voice action. Narration cuts between groups like a DM film-editing. Foundry's per-player vision handles fog independently per sub-group.
+
+### Social dynamic preserved
+Only the Action button sends voice to Claude. Party discussion ("let's head north") is table chatter, off-mic to the DM. The leader presses the arrow when consensus is reached. No move timer; real D&D pacing.
+
+## Spoiler-avoidance (default)
+
+Scott plays as a player and must not see story content. Claude never pushes spoilers through Scott-facing channels; progress and status messages use aggregates and coded IDs. Scott curates a pool of ~10 NPC voices + portraits upfront and Claude matches at introduction time.
+
+**Open question (deferred 2026-04-19):** whether Scott's role should shift from player-blind to co-DM curator (reviewing Claude's drafts before they hit the table) for QC reasons. Motivated by real concern: LLM drift on NPC consistency, generic creative output, first-session risk. Three paths on the table:
+- Pure self-QC + player-blind (structural QC catches ~70–80% of issues; creative-taste layer is the risk)
+- Self-QC + post-session player feedback (trains Claude over time; first sessions still a gamble)
+- Scott curates drafts (trades player-blind experience for creative safety net)
+
+To be resolved next session.
+
+## Known hard problems / scope flags
+
+- **Creative-taste QC ceiling.** AI can't reliably self-check "is this NPC interesting / scene fun / villain memorable" — only structural rules. Real risk for first sessions.
+- **Claude-proposes-app-disposes skill spec alignment.** Existing skill specs (`resolve-roll`, `run-combat-round`) mention direct mutations; need clarifying pass.
+- **v1 scope flag:** prove the session-loop on a small hand-structured encounter before attempting full-module ingestion. Ingestion is the ambitious part; the runtime loop is the uncertain part. Validate the loop first.
