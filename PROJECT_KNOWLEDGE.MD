@@ -1,6 +1,6 @@
 # D&D Digital Table System - Project Knowledge
 
-Last Updated: 2026-04-19
+Last Updated: 2026-04-21
 
 ## Product goal
 
@@ -11,6 +11,7 @@ A fully immersive, in-person D&D experience where **Claude is the DM** and Scott
 - **Game board** = flat-screen TV laid horizontally, running Foundry VTT as the map. 3D-printed minis placed physically on top of the screen.
 - **DM screen** = separate TV acting as Claude's "face" — shows NPC portraits, character cards, scene art, plays DM/NPC voices.
 - **Player devices** = each player has a phone webapp. Core UI: Action button (hold to talk), arrow buttons (for the current marching-order leader in tactical exploration), dice result entry, character sheet view. No phone mini-map — the table TV is the shared map.
+  - **Screen layout:** top ~80% embeds the player's Foundry character sheet (iframe of their actor view). Bottom ~20% is a dynamic context bar that swaps content by mode: **Action** button (default), **4 directional arrows** (tactical + this player is a marching-order leader), **scroll-wheel dice input + Cancel/Confirm** (when the DM has a pending roll assigned to this player), or **Cancel/Send** pair (while composing an Action). Mode precedence for automatic takeovers: **Roll > Move > Action**. Dice input: 1-die rolls show one scroll wheel, 2-die rolls show two, 3+ dice collapse to a single Total wheel with range derived from the formula; the app applies modifiers (e.g. `+3`) on submission so the player only enters raw die faces. Post-roll effects (Lucky feat reroll, Bardic Inspiration, etc.) are handled in natural language via Action — no dedicated post-roll UI. To influence a pending roll with a pre-roll ability, player hits **Cancel Roll** first, then **Action** to ask the DM; DM may re-issue a new roll with the modifier baked in.
 - **Scott's laptop** = Foundry GM view for updating PC positions; also the future site of the curator pane if/when that role lands.
 
 ## Stack
@@ -127,6 +128,14 @@ Full schema in `memory/project_npc_schema_knowledge_tiers.md`.
 - **Claude → Foundry:** Claude writes directly — enemy spawns, token moves, status overlays. Tokens appear instantly on the table TV, no latency through Scott.
 - **Scott → Foundry:** clicks grid cells to update PC positions when minis physically move.
 - **Spoiler-surface risk:** Scott running Foundry GM view exposes monster stats, hidden notes, fog reveals. Fix options (undecided): lock down Foundry permissions ("Trusted Player" with PC-drag-only) OR build a custom helper UI on top of Foundry. Default: permissions first.
+
+### Position tracking via local JSON (Wizard-of-Oz compatible)
+
+A Foundry module writes a live snapshot of positional state — token positions, patrol paths, fog-of-war reveals — to a local JSON file in real time. Consumers read the file directly; nothing goes through an API.
+
+- **During Wizard-of-Oz testing** (human-Claude simulating the DM via Claude Code), the human reads the JSON file on Scott's laptop to know who is where without any API roundtrip. Pairs naturally with the Wizard-of-Oz approach: zero Anthropic spend during testing, same data shape as production.
+- **Once the real Claude API is wired,** the same JSON file becomes one of the `update-position` skill's query-tool input sources. No architectural change at that boundary — the file is the interface; only the reader changes.
+- **Foundry module** that performs the write is TODO. Options: write from scratch, fork an existing position-broadcaster module, or script via Foundry's macro + hook system.
 
 ## Movement
 
