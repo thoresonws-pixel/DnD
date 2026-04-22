@@ -1,15 +1,26 @@
 # D&D Digital Table System - Project Knowledge
 
-Last Updated: 2026-04-21 (v2)
+Last Updated: 2026-04-21 (v3)
 
 ## Product goal
 
-A fully immersive, in-person D&D experience where **Claude is the DM** and Scott plays as a player (must not know the story, by default). The system runs pre-existing published adventures loaded on demand. Scott's group is new to D&D — the AI DM is also a teacher.
+A fully immersive, in-person D&D experience for Scott's family. **Scott is the DM** (running exploration, combat adjudication, pacing, the big picture). **Claude assists** via API — generating NPC dialogue in consistent voice, writing atmospheric descriptions, answering rules questions on demand. The system runs pre-existing published adventures loaded on demand. Scott's group is new to D&D — Claude helps teach, but Scott holds the creative authority.
+
+> **Design pivot (2026-04-21):** the original vision was "Claude is the DM; Scott plays player-blind." After iterating, shifted to the hybrid above. Claude is better at consistent NPC voice + imagery-rich prose; Scott is better at table reading, pacing, and knowing his family. Division plays to each strength.
+
+### Claude's role in the hybrid
+- **NPC voices** — each NPC has a profile stored on the Foundry actor (personality, knowledge tiers, voice id). Scott clicks "Ask [NPC]" and Claude responds in character; Scott reviews and fires to Foundry chat as that NPC speaker → Theatre Inserts shows portrait + line on TV, ElevenLabs speaks.
+- **Scene descriptions** on demand — Scott types "describe the foggy clearing" → Claude returns prose → Scott tweaks → fires as narration banner.
+- **Rules lookups** — short reference answers for in-the-moment questions.
+- **Prep help** — encounter ideas, random improvisation when players go off-script.
+- **What Claude does NOT do:** arbitrate combat, decide pacing, surprise Scott with plot. Scott remains the creative authority.
 
 ## Physical setup
 
 - **Game board** = flat-screen TV laid horizontally, running Foundry VTT as the map. 3D-printed minis placed physically on top of the screen.
-- **DM screen** = separate TV acting as Claude's "face" — shows NPC portraits, character cards, scene art, plays DM/NPC voices.
+- **DM screen** (theatrical TV) = separate TV acting as the DM's "face" — shows NPC portraits, scene art, narration banners, plays NPC voices via ElevenLabs. Dual-mode:
+  - **Exploration/RP mode:** scene art + narration banners (Narrator prose, NPC dialogue via Theatre Inserts)
+  - **Combat mode (JRPG-style):** full-screen combat UI with the active character's portrait, menu of actions (Attack / Spells / Defend / Items / Ask DM), HP bar, enemy state. Navigation via a single passed-around controller (Joy-Con). `A` confirms, `B` backs out, `+`/Start triggers "Ask DM" voice input for out-of-menu actions. Combat transitions back to exploration mode when the combat tracker ends.
 - **Player devices** = each family member's own phone, loaded directly with Foundry in **Chrome** (no Next.js wrapper — players open Foundry's web URL). A custom Foundry module called **`dnd-table-skin`** strips the UI: no scene toolbar, no navigation, no compendium, no players list, no DM chrome. Character sheet auto-opens full-screen via **Tidy 5e Sheets** on login. The phone is a **pure cheat sheet**; the game is played with physical dice, the shared TV, and **Nintendo Switch Joy-Cons as the primary input**.
   - **Controller-first input (Joy-Con per player):** every family member already has a Switch with plenty of Joy-Cons. Each player holds one Joy-Con sideways. Input via browser Gamepad API; voice via Web Speech API.
     - `D-pad` — grid movement (only when this player is the marching-order leader + tactical scene + their turn in combat; otherwise scrolls lists)
@@ -135,6 +146,34 @@ Scott pre-builds a library of GENERIC physical props (tied scrolls, sealed envel
 To prevent LLM drift (premature reveals, under-reveals, voice drift), NPC files include structured knowledge tiers: `open` (freely shared), `guarded` (shared under pressure/rapport with a `reveal_trigger`), `secret` (hidden with strict `reveal_trigger`). A pre-speak QC gate in `voice-npc` / `narrate-scene` checks planned lines against these tiers and rewrites to open-knowledge if a trigger isn't met. This is Layer 1 structural QC — catches the murder-mystery-reveal problem without human judgment.
 
 Full schema in `memory/project_npc_schema_knowledge_tiers.md`.
+
+## NPC profiles (stored on Foundry actors)
+
+Each NPC actor's biography field contains a structured profile that Claude reads at conversation time. Foundry-native storage keeps everything in one place — Scott can edit freely, portable with Foundry backups.
+
+Profile sections (markdown inside the actor biography):
+- `[personality]` — short voice/personality description (1-2 sentences)
+- `[knowledge-open]` — what the NPC freely shares
+- `[knowledge-guarded]` — what they share if trusted or pressed, with reveal trigger
+- `[knowledge-secret]` — what they never reveal under normal pressure
+- `[voice-id]` — ElevenLabs voice identifier for TTS
+- `[relationships]` — connections to other NPCs, factions
+
+**Active NPC session state:** when Scott selects an NPC token on the map (or clicks a dedicated button), the skin module writes `activeNpcId` to the world settings. The DM control page reads this flag; when Scott clicks "Ask [NPC]" the Claude prompt auto-assembles: system prompt + active NPC's profile + recent turns of conversation + the player's latest question. Claude returns 1-3 in-character sentences. Scott reviews, edits, sends as NPC speaker in Foundry chat.
+
+## DM control page (Scott's surface)
+
+Not a replacement for Foundry's GM view — a **companion** tool running on Scott's laptop browser alongside Foundry. Purpose: provide the Claude-assist interface and the fast-path controls the GM view doesn't offer.
+
+Panels:
+- **Active NPC** header (portrait, name, personality summary) — mirrors the selected-token state from Foundry
+- **Player actions feed** — live chat messages from players (via Foundry REST API SSE subscription), each with "Ask NPC" and "Copy" buttons
+- **Response composer** — textarea for Claude's NPC output; Scott edits, fires as NPC chat message
+- **Narration (direct)** — free-form textarea for Scott-written scene prose → fires to narration banner on theatrical TV
+- **Describe this** — quick Claude-assist for imagery ("describe the tavern in gothic style") → output drops into narration composer
+- **Rules lookup** — quick Claude query, answer in side panel (not sent to table)
+- **Roll entry** — pick player + check + result → posts formatted roll message to Foundry chat
+- **Session state glance** — scene name, party HP, combat status
 
 ## Foundry bridge (asymmetric)
 
