@@ -1,6 +1,6 @@
 # D&D Digital Table System - Project Knowledge
 
-Last Updated: 2026-04-21
+Last Updated: 2026-04-21 (v2)
 
 ## Product goal
 
@@ -10,8 +10,22 @@ A fully immersive, in-person D&D experience where **Claude is the DM** and Scott
 
 - **Game board** = flat-screen TV laid horizontally, running Foundry VTT as the map. 3D-printed minis placed physically on top of the screen.
 - **DM screen** = separate TV acting as Claude's "face" — shows NPC portraits, character cards, scene art, plays DM/NPC voices.
-- **Player devices** = each player has a phone webapp. Core UI: Action button (hold to talk), arrow buttons (for the current marching-order leader in tactical exploration), dice result entry, character sheet view. No phone mini-map — the table TV is the shared map.
-  - **Screen layout:** top ~80% embeds the player's Foundry character sheet (iframe of their actor view). Bottom ~20% is a dynamic context bar that swaps content by mode: **Action** button (default), **4 directional arrows** (tactical + this player is a marching-order leader), **scroll-wheel dice input + Cancel/Confirm** (when the DM has a pending roll assigned to this player), or **Cancel/Send** pair (while composing an Action). Mode precedence for automatic takeovers: **Roll > Move > Action**. Dice input: 1-die rolls show one scroll wheel, 2-die rolls show two, 3+ dice collapse to a single Total wheel with range derived from the formula; the app applies modifiers (e.g. `+3`) on submission so the player only enters raw die faces. Post-roll effects (Lucky feat reroll, Bardic Inspiration, etc.) are handled in natural language via Action — no dedicated post-roll UI. To influence a pending roll with a pre-roll ability, player hits **Cancel Roll** first, then **Action** to ask the DM; DM may re-issue a new roll with the modifier baked in.
+- **Player devices** = each family member's own phone, loaded directly with Foundry in **Chrome** (no Next.js wrapper — players open Foundry's web URL). A custom Foundry module called **`dnd-table-skin`** strips the UI: no scene toolbar, no navigation, no compendium, no players list, no DM chrome. Character sheet auto-opens full-screen via **Tidy 5e Sheets** on login. The phone is a **pure cheat sheet**; the game is played with physical dice, the shared TV, and **Nintendo Switch Joy-Cons as the primary input**.
+  - **Controller-first input (Joy-Con per player):** every family member already has a Switch with plenty of Joy-Cons. Each player holds one Joy-Con sideways. Input via browser Gamepad API; voice via Web Speech API.
+    - `D-pad` — grid movement (only when this player is the marching-order leader + tactical scene + their turn in combat; otherwise scrolls lists)
+    - `X` — Spells panel (`←` `→` navigate known spells)
+    - `Y` — Inventory panel
+    - `A` — Features panel (Second Wind, Action Surge, racial traits)
+    - `B` — Back / close current panel → return to character-sheet home view
+    - `ZL` / `ZR` — Page up/down within the current panel
+    - `+` (Start) — toggle voice-to-DM: first press activates the microphone (Web Speech API), phone shows live transcription with a pulsing-mic overlay, second press posts the transcription to Foundry chat as the player's action
+    - `−` (Select) — toggle minimal mode (hide phone UI entirely, "I'm looking at the table")
+    - HD Rumble on ACTION press, combat hit landed, level-up
+  - **Fallback UI when no controller is paired:** an on-screen ACTION button pins to the bottom 15% of the phone. Tap → slide-up dialog with textarea + Cancel/Send (the OS keyboard's mic icon is available for dictation). Detection via `gamepadconnected` / `gamepaddisconnected` — if a Joy-Con dies mid-session, the ACTION button reappears automatically.
+  - **Phone UI in combat:** when Foundry's Combat Tracker is active, a top banner reads **"YOUR TURN"** (pulsing gold) or *"Waiting for [current combatant]"*; character sheet auto-switches to the **Actions** tab so attacks + combat spells are front-and-center. Driven by `combatStart`, `updateCombat`, `deleteCombat`, `combatTurnChange` hooks in the skin module.
+  - **Browser mandate: Chrome.** Web Speech API is reliable on Chrome/Edge across iOS/Android/desktop. Safari over LAN HTTP has blocked microphone access historically. iOS users install Chrome from the App Store.
+  - **No phone mini-map** — the table TV is the shared map.
+- **Dice input:** physical dice at the table. Player reads the die face, announces the result out loud. The DM types the number into a roll-entry field on the DM control page, which posts a formatted roll to Foundry chat attributed to the player. No dice-roller UI on phone; no post-roll UI. Mid-roll effects (Guidance, Lucky, Bardic Inspiration) are resolved verbally — player presses `B` to cancel any pending dialog and `+` to ask the DM; DM may issue a new roll with the modifier baked in.
 - **Scott's laptop** = Foundry GM view for updating PC positions; also the future site of the curator pane if/when that role lands.
 
 ## Stack
