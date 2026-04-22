@@ -37,7 +37,11 @@ A fully immersive, in-person D&D experience for Scott's family. **Scott is the D
   - **Browser mandate: Chrome.** Web Speech API is reliable on Chrome/Edge across iOS/Android/desktop. Safari over LAN HTTP has blocked microphone access historically. iOS users install Chrome from the App Store.
   - **No phone mini-map** — the table TV is the shared map.
 - **Dice input:** physical dice at the table. Player reads the die face, announces the result out loud. The DM types the number into a roll-entry field on the DM control page, which posts a formatted roll to Foundry chat attributed to the player. No dice-roller UI on phone; no post-roll UI. Mid-roll effects (Guidance, Lucky, Bardic Inspiration) are resolved verbally — player presses `B` to cancel any pending dialog and `+` to ask the DM; DM may issue a new roll with the modifier baked in.
-- **Scott's laptop** = Foundry GM view for updating PC positions; also the future site of the curator pane if/when that role lands.
+- **Scott's laptop** = central hub. Runs Foundry GM view + the DM control page (Chrome) + Bluetooth pairs to 1-2 full-size controllers (Xbox / 8BitDo Pro 2) that players pass around JRPG-style during combat. USB-connects to a **Razer shared table mic** (positioned at table center for voice capture). All voice input, controller input, and DM tools live on this one machine.
+- **Phones are optional.** Family members who want their character sheet on hand open Foundry in Chrome on their phone. Those who don't, don't. The game runs fine without any phone participation — the table TVs + passed controller + shared mic cover everything.
+- **Speaker attribution for voice input:**
+  - **MVP (v1):** Scott manually picks the active speaker from a dropdown on the DM page before/after a voice input. Defaults to the current combat-turn character when combat is active.
+  - **Planned (v2):** Browser-side voice ID. One-time 30s registration per family member creates a voice embedding stored locally. At runtime, mic audio is matched against profiles and auto-attributed. Scott can still override via the same dropdown if the match is wrong. Implementation options: TensorFlow.js speaker model, or `meyda.js` MFCC + cosine similarity. Build after the full Wizard-of-Oz loop is proven at a real table.
 
 ## Stack
 
