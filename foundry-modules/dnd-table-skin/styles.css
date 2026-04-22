@@ -1,0 +1,374 @@
+/* =========================================================
+   DnD Table Skin — role-based UI customization
+   ========================================================= */
+
+/* ---- Player role (phone + laptop) — strip GM chrome ---- */
+body.user-player #controls,
+body.user-player #scene-controls,
+body.user-player #ui-left,
+body.user-player #navigation,
+body.user-player #logo,
+body.user-player #hotbar,
+body.user-player #players,
+body.user-player ol.scene-controls,
+body.user-player ol.control-tools,
+body.user-player .scene-controls,
+body.user-player .control-tools,
+body.user-player [data-group="controls"] {
+  display: none !important;
+}
+
+body.user-player #sidebar-tabs a[data-tab]:not([data-tab="chat"]) {
+  display: none !important;
+}
+
+/* Give the board full width on player phones since left toolbar is gone */
+body.user-player #board,
+body.user-player canvas#board {
+  left: 0 !important;
+}
+
+/* ---- Phone viewport — expand sidebar to full width, maximize sheet ---- */
+@media (max-width: 768px) {
+  body.user-player #sidebar {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    right: 0 !important;
+  }
+  body.user-player .app.window-app.sheet {
+    width: 100vw !important;
+    height: calc(100vh - 80px) !important;
+    top: 0 !important;
+    left: 0 !important;
+  }
+}
+
+/* ---- TV Display — scene + banner only; no chat strip, no chrome ---- */
+body.user-tv-display #controls,
+body.user-tv-display #scene-controls,
+body.user-tv-display #ui-left,
+body.user-tv-display #navigation,
+body.user-tv-display #logo,
+body.user-tv-display #hotbar,
+body.user-tv-display #players,
+body.user-tv-display #pause,
+body.user-tv-display #combat-carousel,
+body.user-tv-display #sidebar,
+body.user-tv-display #chat,
+body.user-tv-display #chat-log,
+body.user-tv-display #chat-form,
+body.user-tv-display #chat-notifications,
+body.user-tv-display .token-hud,
+body.user-tv-display .scene-control,
+body.user-tv-display .control-tools,
+body.user-tv-display ol.scene-controls,
+body.user-tv-display [data-group="controls"] {
+  display: none !important;
+}
+
+body.user-tv-display #board,
+body.user-tv-display canvas#board {
+  width: 100vw !important;
+  height: 100vh !important;
+}
+
+/* Hide user cursors / pings on every non-GM surface */
+body.user-tv-display .ping,
+body.user-tv-display .user-ping,
+body.user-tv-display .cursor-label,
+body.user-tv-display .player-cursor,
+body.user-tv-display [data-pointer-user],
+body.user-player .ping,
+body.user-player .user-ping,
+body.user-player .cursor-label,
+body.user-player .player-cursor,
+body.user-player [data-pointer-user] {
+  display: none !important;
+}
+
+/* ---- Browser fullscreen (F11) — extra cleanup ---- */
+:fullscreen #controls,
+:fullscreen #navigation,
+:fullscreen #logo,
+:fullscreen #hotbar,
+:fullscreen #players {
+  display: none !important;
+}
+
+/* =========================================================
+   TV Display — theatrical narration banner
+   Triggered by NPC dialogue or /narrate command; rendered only
+   on the TV Display user via banner.js.
+   ========================================================= */
+
+.dnd-banner {
+  position: fixed;
+  inset: 0 0 0 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.92) 45%, rgba(0, 0, 0, 0.4) 75%, rgba(0, 0, 0, 0) 100%);
+  display: flex;
+  align-items: flex-end;
+  padding: 0;
+  z-index: 100000;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: dnd-banner-in 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  color: #fff;
+  font-family: "Cinzel", "Trajan Pro", Georgia, serif;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
+}
+
+@keyframes dnd-banner-in {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.dnd-banner-portrait {
+  width: 45vw;
+  max-width: 720px;
+  height: 90vh;
+  object-fit: cover;
+  object-position: top center;
+  filter: drop-shadow(0 0 40px rgba(0, 0, 0, 0.8));
+  margin-left: 2vw;
+  align-self: flex-end;
+}
+
+.dnd-banner-text-wrap {
+  flex: 1;
+  padding: 4vh 5vw 8vh 3vw;
+  max-width: 55vw;
+}
+
+.dnd-banner-name {
+  font-size: 3.5rem;
+  font-weight: 700;
+  margin-bottom: 1.5rem;
+  color: #ffd27a;
+  letter-spacing: 0.03em;
+  text-shadow: 0 0 20px rgba(255, 210, 122, 0.4), 0 2px 8px rgba(0, 0, 0, 0.9);
+}
+
+.dnd-banner-text {
+  font-size: 2rem;
+  line-height: 1.55;
+  font-family: Georgia, "Times New Roman", serif;
+  min-height: 2em;
+  letter-spacing: 0.01em;
+}
+
+/* =========================================================
+   Player phone — custom ACTION button (injected by main.js)
+   ========================================================= */
+
+#dnd-action-btn {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 15vh;
+  min-height: 80px;
+  background: linear-gradient(to bottom, #4f46e5, #3730a3);
+  color: #fff;
+  border: none;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  z-index: 99998;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  font-family: inherit;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+}
+
+#dnd-action-btn:active {
+  background: linear-gradient(to bottom, #3730a3, #1e1b4b);
+}
+
+/* Make room above the button so the sheet isn't clipped */
+body.user-player.dnd-has-action-btn #sidebar,
+body.user-player.dnd-has-action-btn .app.window-app.sheet {
+  bottom: 15vh !important;
+}
+
+/* ---- Player action dialog (slide-up from bottom) ---- */
+
+.dnd-action-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  z-index: 99999;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  animation: dnd-action-fade 0.2s ease-out;
+}
+
+@keyframes dnd-action-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.dnd-action-dialog {
+  background: #1e1b4b;
+  color: #fff;
+  width: 100%;
+  border-radius: 1rem 1rem 0 0;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.7);
+  animation: dnd-action-slide 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes dnd-action-slide {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.dnd-action-dialog h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #fff;
+  font-weight: 600;
+}
+
+#dnd-action-textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 0.85rem;
+  border-radius: 0.5rem;
+  background: #fff;
+  color: #111;
+  font-size: 1.05rem;
+  border: none;
+  resize: none;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.dnd-action-dialog-buttons {
+  display: flex;
+  gap: 0.6rem;
+}
+
+.dnd-action-dialog-buttons button {
+  flex: 1;
+  padding: 0.9rem;
+  border-radius: 0.5rem;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+#dnd-action-cancel {
+  background: #4b5563;
+  color: #fff;
+}
+
+#dnd-action-send {
+  background: #4f46e5;
+  color: #fff;
+}
+
+#dnd-action-send:active {
+  background: #3730a3;
+}
+
+/* =========================================================
+   "Your Turn" banner (combat mode)
+   ========================================================= */
+
+.dnd-turn-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #fff;
+  z-index: 99997;
+  background: rgba(30, 30, 40, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  font-family: inherit;
+  text-transform: uppercase;
+}
+
+.dnd-turn-banner.is-my-turn {
+  background: linear-gradient(to bottom, #ffd27a, #d97706);
+  color: #1a1a1a;
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 16px rgba(251, 191, 36, 0.5);
+  animation: dnd-turn-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes dnd-turn-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+body.user-gm .dnd-turn-banner,
+body.user-tv-display .dnd-turn-banner {
+  display: none !important;
+}
+
+/* Push player sheet down slightly so the banner doesn't cover the sheet header */
+body.user-player.dnd-in-combat #sidebar,
+body.user-player.dnd-in-combat .app.window-app.sheet {
+  top: 2.5rem !important;
+}
+
+/* =========================================================
+   Leader movement arrow pad
+   ========================================================= */
+
+.dnd-arrow-pad {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 22vh;
+  min-height: 180px;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  background: rgba(0, 0, 0, 0.75);
+  z-index: 99998;
+  box-sizing: border-box;
+}
+
+.dnd-arrow-btn {
+  background: #4f46e5;
+  color: #fff;
+  font-size: 2.2rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.dnd-arrow-btn:active {
+  background: #3730a3;
+}
+
+.dnd-arrow-btn.dir-up    { grid-column: 2; grid-row: 1; }
+.dnd-arrow-btn.dir-left  { grid-column: 1; grid-row: 2; }
+.dnd-arrow-btn.dir-right { grid-column: 3; grid-row: 2; }
+.dnd-arrow-btn.dir-down  { grid-column: 2; grid-row: 2; }
+
+/* When arrow pad is active on a player phone, hide the ACTION button */
+body.dnd-leader-mode #dnd-action-btn {
+  display: none !important;
+}
+
+body.user-player.dnd-has-arrow-pad #sidebar,
+body.user-player.dnd-has-arrow-pad .app.window-app.sheet {
+  bottom: 22vh !important;
+}

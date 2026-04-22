@@ -1,0 +1,16 @@
+{
+  "id": "dnd-table-skin",
+  "title": "DnD Table Skin",
+  "description": "Custom UI skin for the D&D Digital Table project — strips chrome for phone players and makes the TV display fullscreen map-only.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "12",
+    "verified": "14",
+    "maximum": "14"
+  },
+  "authors": [
+    { "name": "Scott Thoreson" }
+  ],
+  "styles": ["styles.css"],
+  "esmodules": ["main.js"]
+}
