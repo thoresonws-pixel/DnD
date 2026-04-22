@@ -1,71 +1,67 @@
 ---
 skill: player-action-route
-purpose: Classify a player's spoken action (arriving as transcript from their phone via Firebase) into the right response type and dispatch to the appropriate downstream skill.
-invoked_by: session orchestrator on every incoming player action event.
+purpose: Classify an incoming player action and advise Scott on how to handle it — NPC response, skill check, narration, rules question, or no response.
+invoked_by: Scott pasting an `[Action Routing]` block into the Claude.ai Project chat when he's unsure how to handle a player's input.
 ---
 
 # Skill: player-action-route
 
 ## Purpose
 
-The player's phone is the only input channel (no mic array at the table). Each press of the Action button produces one transcript. That transcript could be anything — an in-character action, an out-of-character question, a rules query, a half-formed thought. This skill is the classifier that keeps the scene state clean: in-character actions advance the scene, OOC noise does not.
+Not every player utterance needs the same response. A rules question gets a short answer privately. An in-character line to an NPC needs `voice-npc`. A creative attempt ("I try to balance on the chandelier") needs a skill-check adjudication. Scott can usually tell these apart instantly, but some inputs are ambiguous or multi-modal and a quick classifier helps.
+
+This skill is advisory. Scott makes the call; Claude suggests the path.
 
 ## When to invoke
 
-Every time a player hits their Action button and a transcript arrives via Firebase. One invocation per transcript.
+When the Project sees input tagged `[Action Routing]`. Typically Scott invokes this sparingly — for genuinely ambiguous inputs, or when he wants a second opinion on how to handle something.
 
-## Inputs
+## Expected input format
 
-- `player_id`
-- `transcript` — the player's spoken words, transcribed
-- `live_state` — current location, active scene type, present NPCs, pending rolls
-- `recent_context` — last ~3 scene events (helps disambiguate)
+```
+[Action Routing]
+Player (<speaker>): "<what the player said>"
+Context: <optional — current scene, active NPC if any, combat state>
+```
 
-## Classification (pick exactly one)
+## Classification buckets
 
-| Class | Example transcripts | Dispatch |
+| Bucket | Example | Recommended handling |
 |---|---|---|
-| `combat_action` | "I swing at the goblin with my axe" | → `run-combat-round` |
-| `movement` | "I move around behind the pillar" | update position state, → `narrate-scene` (brief) |
-| `social` | "I try to convince the guard to let us pass" | → may call for roll → `narrate-scene` |
-| `exploration` | "I search the bookshelf for hidden compartments" | → may call for roll → `narrate-scene` |
-| `dialogue` | "I ask the innkeeper if she's seen a hooded stranger" | → `narrate-scene` (scene_type=social, NPC response) |
-| `ooc` | "Wait, how many HP does my ranger have?" | → private reply to player's phone; NO scene update |
-| `rules_query` | "Can I use my reaction to do that?" | → rules answer to player's phone; NO scene update |
-| `ambiguous` | "Umm, maybe I try... something with the thing?" | → clarifying question to player's phone; hold scene |
+| `dialogue_to_npc` | "I ask the barkeep about the missing caravan." | → `voice-npc` with the active NPC |
+| `combat_declaration` | "I swing my warhammer at the goblin." | → Foundry's combat tracker / attack roll. Claude not needed. |
+| `skill_check_needed` | "I try to balance on the chandelier to get the drop on them." | → `call-for-roll` — suggest ability + DC |
+| `movement` | "I move around behind the pillar." | → Scott moves the token in Foundry. Claude not needed. |
+| `exploration_action` | "I search the bookshelf for hidden compartments." | → `call-for-roll` (Perception/Investigation), then narrate outcome |
+| `rules_query` | "Can I use my reaction to counter that?" | → Short rules answer to Scott. Do not POST to Foundry. |
+| `ooc` | "Wait, how many HP do I have left?" | → No action. Scott can tell the player directly. Do not POST. |
+| `creative_improvisation` | "I try to knock over the chandelier onto the goblins." | → Suggest a skill check + narrative ruling; Scott adjudicates |
+| `ambiguous` | "Umm, I do... something with the thing." | → Ask Scott to clarify / ask the player for specifics |
+
+## Output format
+
+Short. Don't over-think.
+
+```
+Bucket: <bucket name>
+Suggested: <1-2 sentences on how to handle>
+Details (if relevant): <roll ability + DC, NPC to use, rules note>
+```
 
 ## Checklist
 
-1. **Classify** using the table above, with `recent_context` to disambiguate.
-2. **If `ooc` or `rules_query`:** respond privately to the asking player's phone. Do NOT touch `live/` state. Do NOT narrate on the DM TV.
-3. **If `ambiguous`:** send a short clarifying question to that player's phone. Hold the scene until they re-submit.
-4. **If in combat and it's not this player's turn:** queue the action or gently redirect ("you'll act on your turn"). Combat turn discipline is enforced in `run-combat-round`.
-5. **If `dialogue`:** forward to `narrate-scene` with scene_type=social, including target NPC and the player's question as `player_trigger`. The responding NPC must be vetted through `introduce-element` if new.
-6. **If `social` or `exploration`:** decide if a roll is needed.
-   - Roll needed → `call-for-roll` → wait → `resolve-roll` → `narrate-scene`
-   - No roll → `narrate-scene` directly with the outcome
-7. **If `movement`:** consult Foundry state (or Scott's manual helper input) for the target; update `live/` positional state; emit brief narration via `narrate-scene` (scene_type=transition).
-8. **If `combat_action`:** dispatch to `run-combat-round`.
-9. **Log** the classification + dispatch to `live/session_log/session_<N>.md`.
-
-## Outputs
-
-- Dispatch to exactly one downstream skill (or a private reply for OOC/rules)
-- Entry in session log
-
-## Multi-player concurrency
-
-- **Outside combat:** first-come-first-served with natural conversation flow. If two transcripts arrive within a short window, handle the first fully, then the second. Acknowledge the second player on their phone ("one sec — [first player] is acting").
-- **In combat:** only the current-turn player's `combat_action` advances the round. Others' actions queue. `run-combat-round` owns the turn order.
-
-## Failure modes this skill prevents
-
-- **OOC pollution.** A player asking "wait, what's my AC?" should not appear in the DM narration or trigger an NPC response.
-- **Ambiguity-driven misdirection.** If the transcript is unclear, clarify rather than guess. A wrong guess can introduce elements or commit to narrative beats Claude can't walk back.
-- **Accidental un-gated introductions.** Every skill this routes to invokes `introduce-element` for new NPCs/places; this skill never narrates new elements itself.
+1. **Classify** using the buckets above. Pick the single best match.
+2. **Suggest action.** Keep it terse. If the action is "Scott handles in Foundry," say that plainly — don't elaborate.
+3. **Do not POST to Foundry.** This skill is advisory. If Scott agrees with the suggestion, he (or a follow-up `voice-npc` / `narrate-scene` call) handles the actual POST.
 
 ## Out of scope
 
-- Voice-to-text itself (handled by player phone webapp / Firebase pipeline)
-- Actually resolving rolls (that's `call-for-roll` + `resolve-roll`)
-- Choosing which NPC responds in a `dialogue` action (that's `narrate-scene` with scene context)
+- Actually generating the NPC response (use `voice-npc`)
+- Actually generating narration (use `narrate-scene`)
+- Making the mechanical ruling (that's Scott's call; Claude only suggests)
+- Adjudicating success / failure (that's Scott after the roll)
+
+## Failure modes this prevents
+
+- **Scott over-thinking ambiguous inputs.** Fast classification unblocks pacing.
+- **Claude acting autonomously on inputs Scott didn't intend to route.** This skill is advisory only — Claude doesn't POST or act, just classifies.

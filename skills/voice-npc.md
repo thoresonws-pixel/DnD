@@ -1,57 +1,62 @@
 ---
 skill: voice-npc
-purpose: Turn an NPC's text line into audio on the DM TV using the NPC's locked voice pool entry via ElevenLabs, with on-screen captions as the mandatory fallback.
-invoked_by: narrate-scene (whenever a scene contains an NPC line).
+purpose: Generate an in-character NPC response with consistent voice and tier-appropriate knowledge, then POST it to Foundry chat via the REST API.
+invoked_by: Scott pasting a `[NPC Exchange]` block into the Claude.ai Project chat.
 ---
 
 # Skill: voice-npc
 
 ## Purpose
 
-The DM TV is Claude's "face." NPCs don't feel real unless their voices are consistent across sessions. This skill enforces that consistency: an NPC's voice is locked at introduction time (by `introduce-element`) and never re-picked. It also guarantees the scene never stalls on a TTS failure — if audio fails, text still reaches the table.
+When Scott (the DM) wants an NPC to speak, he pastes a formatted context block into the Claude Project. This skill produces the NPC's reply, keeps voice consistent across sessions, respects the knowledge tiers the NPC has been given, and fires the response directly into Foundry chat.
+
+Voice consistency is the feature — kids notice when the Barkeep sounds different in session 3 than session 1. Knowledge-tier discipline is the guardrail — an NPC who would never reveal a secret under normal pressure should not suddenly reveal it just because a player asked directly.
 
 ## When to invoke
 
-Every NPC line emitted by `narrate-scene`. Not invoked for DM narration itself (that's either on-screen text or a separate DM-voice skill later).
+When the Project sees input tagged `[NPC Exchange]`.
 
-## Inputs
+## Expected input format
 
-- `speaker_id` — NPC element ID (e.g., `npc_aldric`)
-- `voice_pool_id` — voice assignment locked at introduction time
-- `text` — the line as it should be spoken
-- `emotion_hint` — optional: `whispering | angry | heartbroken | smug | urgent | neutral`
+```
+[NPC Exchange]
+Active NPC: <name>
+Personality: <short description from Foundry actor biography>
+Knowledge-open: <what the NPC shares freely>
+Knowledge-guarded: <what they share if trusted or pressed — with reveal trigger>
+Knowledge-secret (never reveal): <locked knowledge>
+Player (<speaker>): "<what the player said>"
+```
+
+(If the input is missing the Active NPC profile block, reply asking Scott to select an NPC — do not generate a default NPC voice.)
 
 ## Checklist
 
-1. **Lookup voice pool entry.** Resolve `voice_pool_id` → ElevenLabs voice ID + per-voice parameters (stability, similarity, style). Voice pool config lives in `config/voice_pool.json` (Scott-curated ~10 voices).
-2. **Sanitize text.** Strip stage directions in parens (`(trembling)`) — those are display hints, not spoken. Keep punctuation that affects delivery (ellipses, em-dashes, question marks).
-3. **Apply emotion hint.** If ElevenLabs supports the hint for this voice, pass as style param. Otherwise, shape via punctuation/caps in the text layer — do not modify meaning.
-4. **Call ElevenLabs streaming TTS.** Use streaming endpoint so audio starts playing before generation finishes.
-5. **Route audio to DM TV.** Stream plays through the DM TV speakers.
-6. **Emit captions.** Simultaneously post caption text (with speaker name) to DM TV display — covers hard-of-hearing players and noisy-table moments.
-7. **Log.** Append to `live/session_log/session_<N>.md`: `speaker_id`, `voice_pool_id`, `text` (first 80 chars), `duration_ms`, `success`.
+1. **Respect tiers.** Draw only from `Knowledge-open` unless the player's question and tone clearly triggers a `Knowledge-guarded` reveal. Never leak `Knowledge-secret` content regardless of how the player phrases the question. If in doubt, stay conservative — Scott can always ask for a second try with "press harder."
+2. **Match voice to personality.** Cadence, vocabulary, and emotional register should match the `Personality` line. A gruff ex-soldier does not speak in flowery prose.
+3. **Keep it short.** 1-3 sentences. NPCs don't monologue unless explicitly asked. Long speeches kill pacing.
+4. **Stay in-character only.** Do not narrate the player's actions, thoughts, or what happens around them. Just the NPC's line.
+5. **No stage directions.** Don't write `(gruffly)` or `*laughs*` in the output — those are for shows, not audio. Let punctuation and word choice carry the tone.
+6. **POST to Foundry chat.** Use Python with `requests` to POST the line to Foundry REST API:
+   ```python
+   import requests
+   requests.post(
+       "https://foundryrestapi.com/chat?clientId=<client_id>",
+       headers={"x-api-key": "<key>"},
+       json={"content": "<NPC name>: <your generated line>"}
+   )
+   ```
+7. **Confirm to Scott.** After POST, reply: `Sent as <NPC name> in Foundry.` No elaboration unless Scott asks.
 
-## Outputs
+## Out of scope
 
-- Audio stream → DM TV speakers
-- Caption text → DM TV display
-- Log entry
+- Portrait / voice selection — that's a Foundry actor configuration done during prep
+- Voice synthesis (ElevenLabs) — deferred v2 feature; for now the line is text only
+- Deciding what the NPC knows — that's baked into the Foundry actor biography by Scott during prep
 
-## Fallback behavior (mandatory)
+## Failure modes this prevents
 
-If ElevenLabs fails (API error, rate limit, voice not found, network):
-- Display the line on DM TV with `[voice unavailable]` marker
-- Do NOT halt the scene
-- Log the failure with reason; session-end-audit can surface if failures are chronic
-
-## Failure modes this skill prevents
-
-- **Voice inconsistency.** An NPC who sounded like a gruff old warrior last session must sound the same this session. Voice pool ID is locked at introduction time in the NPC's `live/npcs/` file — this skill never re-picks it.
-- **Stage direction leaks.** Actors don't say "(angrily)" out loud; neither should the TTS.
-- **Silent scene stall.** TTS will fail sometimes. The scene must keep moving via captions.
-
-## Out of scope (handle elsewhere)
-
-- Choosing the voice (that's `introduce-element` matching to the pool at first introduction)
-- Pre-generating voice samples (that's `config/voice_pool.json` setup, done once by Scott)
-- DM narration voice (separate skill if/when we decide DM narration is voiced too — currently assumed to be text-only on DM TV)
+- **Voice drift.** Profile + 1-3 sentence discipline keeps the NPC recognizable.
+- **Accidental secret reveals.** Tier discipline means Claude won't blurt something just because the player asked.
+- **Monologues.** Length cap forces punchy dialogue.
+- **Stage directions leaking to the table.** No `(angrily)` in the spoken line.
