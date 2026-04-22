@@ -71,6 +71,70 @@ a battle he was not technically at — a secret shame. Nothing relevant to the q
 
 ---
 
+### Brena the Blacksmith
+
+**Role:** Repairs weapons / armor for a fee. Gruff, competent, reasonably well-informed about the militia. Optional stop for party.
+
+```
+[personality]
+Focused, economical with words, forge-tempered patience. Mid-50s, broad-shouldered,
+soot-streaked. Speaks in short deliberate sentences. Faint warm humor when earned.
+Doesn't look up from the anvil unless the conversation warrants it.
+
+[knowledge-open]
+Repairs weapons/armor (standard PHB rates). Forged sword + axe for the local militia.
+Knows Garrin and Hollis well; knew the two militiamen who went to the tomb by name.
+Believes goblin groups usually move on; these have been here suspiciously long.
+
+[knowledge-guarded]
+Reveal trigger: party asks about unusual commissions recently.
+A month ago, the hooded elf commissioned a plain iron bracelet — no decoration,
+specific weight. Would not say what it was for. Paid in gold coins Brena hadn't seen before
+(slightly heavier than standard mint — she noted it but didn't ask).
+
+[knowledge-secret]
+Never reveal unprompted.
+Her late husband was in the same northern regiment as Dain. Dain knows her
+grief; they do not speak of it publicly. Not plot-relevant.
+
+[voice-id]
+(placeholder — middle-aged, terse, warm when unguarded)
+```
+
+---
+
+### Old Pell, the Hermit
+
+**Role:** Lives on the forest edge in a leaning cottage. Half-drunk, half-prophetic. Seen things in the forest. Optional encounter on the way to the tomb.
+
+```
+[personality]
+Rambling, cryptic, flickers of lucidity. Speaks in fragments.
+Smells of pipe smoke and wet wool. Interrupts himself mid-sentence.
+Rural accent, thick. Warm with kids, wary of armed strangers until they share drink.
+
+[knowledge-open]
+Lives alone. Sees "things in the trees" at dusk. Claims the forest "breathes different" this month.
+Has a pet crow called Wick who acts as his eyes. Will trade gossip for strong drink.
+
+[knowledge-guarded]
+Reveal trigger: share a drink or offer food.
+Saw the hooded elf walk into the forest three weeks ago. She did not come out the way she went in.
+Also heard a new sound in the woods — "big. wet. clicking." — fears it may be an owlbear that
+wandered down from the northern ridges. Warns the party to stay on the path.
+
+[knowledge-secret]
+Never reveal.
+In his youth Pell was a druid who lost his circle. The forest does speak to him,
+a little. He tells himself it's the drink. Not plot-relevant for Delian Tomb;
+reserved as a hook for later woodland adventures.
+
+[voice-id]
+(placeholder — older, slurred, alternates between mumbling and sudden clarity)
+```
+
+---
+
 ### Merchant Hollis (supplies)
 
 **Role:** Runs the village's general store. Will sell basic adventuring gear at standard PHB prices. Not a plot NPC — a mechanical convenience.
@@ -101,6 +165,39 @@ None. Hollis is a simple merchant; no hidden agenda.
 ---
 
 ## Tomb NPCs and monsters
+
+### Garrin, the Surviving Militiaman (found in tomb, Room C or D)
+
+**Role:** One of the two militia who went into the tomb. Alive but wounded and tied up in a side room or alcove. Party finds him mid-dungeon. Gives intel on boss room layout if rescued.
+
+```
+[personality]
+Shaken but composed, mid-30s, guard-trained. Tries to joke through the fear.
+Rough voice from dehydration. Does not resist rescue but also doesn't fawn.
+Asks about his friend (the other militiaman) — that friend is dead; be careful how
+the party breaks it.
+
+[knowledge-open]
+Name is Garrin. Village militia. Came with his friend Tomas a week ago — they were
+ambushed at the antechamber and he was captured; Tomas fell in the fight.
+Has been fed moldy bread, kept tied up, overheard patrols.
+
+[knowledge-guarded]
+Reveal trigger: once safe, any follow-up question about the layout.
+Knows: the boss's chamber is at the end; the boss has at least two lieutenants;
+there is a hidden passage behind the altar in the treasure room (he heard goblins
+complain about "cleaning out the narrow way"). Volunteers this info to help the party.
+
+[knowledge-secret]
+Never reveal.
+Tomas died because Garrin froze; he has been replaying it for a week. Do not surface
+unless the party probes emotionally — and only then as a heavy beat, not a twist.
+
+[voice-id]
+(placeholder — 30s, hoarse, dry humor masking trauma)
+```
+
+---
 
 ### Goblin Boss "Skarvax" (final encounter)
 
@@ -165,6 +262,104 @@ None. Elric is an honest kid.
 
 ---
 
+### Owlbear (forest encounter)
+
+**Role:** Optional forest encounter en route to the tomb. Not a pre-planned combat; triggered on failed Survival check (players miss the tracks + wandered too close). Either one tense combat round + retreat, or skill-check avoidance. Not in the tomb at all.
+
+```
+[personality]
+Not an NPC — a dangerous wild animal. No dialogue. Territorial screeches, heavy breathing,
+snuffling roars. Smashes first and thinks second. Will break off pursuit if wounded
+below half HP — it's protecting territory, not hunting specifically.
+
+[knowledge-open]
+Not applicable (monster, not NPC).
+
+[knowledge-guarded]
+Not applicable.
+
+[knowledge-secret]
+Not applicable.
+
+[encounter-design]
+Trigger: failed Survival DC 13 during forest travel. Success → party spots tracks,
+circles wide, avoids encounter (narrate tension without combat).
+Failure → owlbear bursts through undergrowth; roll initiative.
+
+Stats: standard 5e Owlbear (CR 3, HP 59, AC 13, Multiattack: beak + claws).
+Scaled for 2 PCs (level 1-3): consider starting at half HP OR fleeing at 1/2 HP
+(which the RAW owlbear does not do — override as "wounded territorial animal").
+
+Outcome: survive a round or two → owlbear retreats wounded. XP awarded.
+Corpse scenario: if killed, owlbear has nothing useful; flavor narration of grief
+for the beast (no one cheers a dead owlbear — sets tone for serious fantasy, not pulp).
+
+[voice-id]
+(placeholder — use SFX not voice; deep territorial roar + hissing screech)
+```
+
+---
+
+### Giant Spider (tomb side room)
+
+**Role:** Ambush predator in an unused burial alcove that goblins avoid. Rewards players who poke into a side door they didn't need to. Exercises the Restrained condition + movement-on-webs mechanics.
+
+```
+[personality]
+Not an NPC. Silent. Skitters. Waits for prey to enter the web.
+
+[knowledge-open]
+Not applicable.
+
+[encounter-design]
+Trigger: opening the door to the unused side alcove. Room is webbed floor-to-ceiling.
+Movement halved, DEX save DC 12 or become Restrained by webs.
+
+Stats: standard 5e Giant Spider (CR 1, HP 26, AC 14). Single combatant.
+Bite deals poison damage — introduces Poisoned condition to the group.
+Web action can Restrain a PC (exercise the restrained-condition cleanup).
+
+Loot: a half-cocooned past-adventurer corpse in the room has a silver ring (30gp) +
+a half-torn map fragment hinting at another dungeon in the region (future hook).
+
+[voice-id]
+(placeholder — SFX only: clicks, hissing air, chitin scrape)
+```
+
+---
+
+### Animated Skeleton ×2 (tomb — post-hidden-door chamber)
+
+**Role:** The tomb was a real tomb once. Behind the secret door in Room D, skeletons of the original interred rise to defend the inner sanctum. Exercises undead mechanics: immune to poison, vulnerable to bludgeoning.
+
+```
+[personality]
+Not NPCs. Mindless. No dialogue, only the clack of bone on stone floor.
+Move with deliberate purpose, not goblin frenzy. Eerie stillness between actions.
+
+[knowledge-open]
+Not applicable.
+
+[encounter-design]
+Trigger: players open the secret door in Room D (the treasure/puzzle room) and cross
+the threshold. Two skeletons rise from sarcophagi.
+
+Stats: standard 5e Skeleton (CR 1/4, HP 13, AC 13) ×2. Armed with shortswords.
+Mechanics to exercise:
+- Vulnerability to bludgeoning (warhammer users do double damage — Thorin's moment)
+- Immunity to poison + poisoned condition (if party already got poisoned by spider,
+  teaches that "Poisoned is a condition, not everyone has it")
+- Immunity to exhaustion / being frightened
+
+Narrative beat: the skeletons wear tarnished amulets with the same tomb-sigil
+(flavor only, sets up that the tomb has a history). Worth ~5gp each as curios.
+
+[voice-id]
+(placeholder — SFX: bone clatter, distant howling wind, no voice)
+```
+
+---
+
 ### Generic Goblin (×2, first-room encounter)
 
 **Role:** Mook combatants. Minimal dialogue. Primarily a combat obstacle.
@@ -190,6 +385,20 @@ None.
 
 ---
 
+## Combat variety check
+
+Enemies above give the party exposure to four distinct encounter archetypes across one adventure:
+
+| Enemy | Archetype | Mechanic exercised |
+|---|---|---|
+| Generic goblins ×2 | Mook horde | Action economy, pack tactics |
+| Owlbear | Brute boss (CR 3) | Single high-HP target, Multiattack, optional retreat/skill avoidance |
+| Giant spider | Ambush controller | Restrained condition, web terrain, poison damage |
+| Skeletons ×2 | Undead with damage type | Bludgeoning vulnerability, poison/condition immunity |
+| Skarvax + minion | Boss + adds | Phase 2 trigger, hostage mechanics, boss cowardice |
+
+That covers: positioning (web), damage types (bludgeoning), conditions (poisoned, restrained), creature types (humanoid, beast, monstrosity, undead), and encounter flow (mook → wilderness brute → ambush → undead → boss).
+
 ## Voice pool planning (v2)
 
 When ElevenLabs integration lands, these are the distinct voices we'll need:
@@ -198,12 +407,15 @@ When ElevenLabs integration lands, these are the distinct voices we'll need:
 |---|---|
 | Elder Marta | Older woman, tired, grave |
 | Barkeep Dain | Middle-aged man, gruff, northern accent |
+| Brena the Blacksmith | Middle-aged woman, terse, understated warmth |
+| Old Pell the Hermit | Older man, slurred/rambling, cryptic flashes |
 | Merchant Hollis | Middle-aged man, breezy / unctuous, chatty |
+| Garrin (surviving militiaman) | 30s man, hoarse, dry dark humor |
 | Skarvax | Goblin — gravelly, theatrical, cackling |
 | Elric | Teenage boy, thin voice, nervous |
 | Generic goblin | Goblin — any; not personality-distinct |
 
-= ~5-6 distinct voice IDs. Comfortably within the free-tier ElevenLabs sample library.
+= ~9 distinct voice IDs (6 human, 2 goblin, 1 pooled goblin). Comfortably within the free-tier ElevenLabs sample library. Monsters (owlbear, spider, skeletons) use SFX rather than voice.
 
 ---
 
